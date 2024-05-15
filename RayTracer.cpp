@@ -26,6 +26,13 @@ const float XMAX = 10.0;
 const float YMIN = -10.0;
 const float YMAX = 10.0;
 
+const float XMIN_BOX = -50.0;
+const float XMAX_BOX = 50.0;
+const float YMIN_BOX = -50.0;
+const float YMAX_BOX = 50.0;
+const float ZMIN_BOX = 0.0;
+const float ZMAX_BOX = 400.0;
+
 TextureBMP texture;
 
 vector<SceneObject*> sceneObjects;
@@ -46,24 +53,22 @@ glm::vec3 trace(Ray ray, int step)
     if(ray.index == -1) return backgroundCol;		//no intersection
 	obj = sceneObjects[ray.index];					//object on which the closest point of intersection is found
 	if(ray.index == 0) {
-		int x1 =-15;
-		int x2 =  5;
-		int z1 =-60;
-		int z2 =  -90;
-		int stripeWidth = 5;
-		int iz = (ray.hit.z)/stripeWidth;
-		int k = iz % 2;
-		if (k==0) color = glm::vec3(0,1,0);
-		else color = glm::vec3(1,1,0.5);
+		
+
+
+		int stripeWidth = 20;
+		int ix = (ray.hit.x) / stripeWidth; // Calculate the stripe index in x-direction
+		int iz = (ray.hit.z) / stripeWidth; // Calculate the stripe index in z-direction
+		int k = (ix + iz) % 2; // Sum of the stripe indices modulo 2 to create a checkered pattern
+
+		if (k == 0) {
+			color = glm::vec3(0, 1, 0); // Color 1 for one set of squares
+		} else {
+			color = glm::vec3(1, 1, 0.5); // Color 2 for the other set of squares
+		}
 		obj->setColor(color);
 
-		float texcoords = (ray.hit.x - x1)/(x2-x1);
-		float texcoordt = (ray.hit.z - z1)/(z2-z1);
-		if(texcoords > 0 && texcoords < 1 && texcoordt > 0 and texcoordt < 1)
-		{
-			color = texture.getColorAt(texcoords, texcoordt);
-			obj->setColor(color);
-		}
+	
 	}
 
 
@@ -116,7 +121,7 @@ void display()
 		{
 			yp = YMIN + j * cellY;
 
-			glm::vec3 dir(xp + 0.5 * cellX, yp + 0.5 * cellY, -EDIST);	//direction of the primary ray
+			glm::vec3 dir(xp + 0.5 * cellX, yp + 0.5 * cellY, EDIST);	//direction of the primary ray
 
 			Ray ray = Ray(eye, dir);
 
@@ -148,34 +153,78 @@ void initialize()
 
     glClearColor(0, 0, 0, 1);
 
-	texture = TextureBMP("/home/james/Documents/Lab07and8_Files/Butterfly.bmp");
+	texture = TextureBMP("/home/james/Documents/Assignment-2/363-assignment-2/Butterfly.bmp");
 
-	Plane *plane = new Plane (glm::vec3(-20., -15, -40), //Point A
-		glm::vec3(20., -15, -40), //Point B
-		glm::vec3(20., -15, -200), //Point C
-		glm::vec3(-20., -15, -200)); //Point D
-	plane->setColor(glm::vec3(0.8, 0.8, 0));
-	plane->setSpecularity(false);
-	sceneObjects.push_back(plane);
+	// Define the planes of the Cornell box
+	Plane *floorPlane = new Plane(
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX),    // Point A
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX),   // Point B
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX),    // Point C
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX)   // Point D
+		
+		
+	);
+	floorPlane->setColor(glm::vec3(0.5, 0.8, 0));   //Set colour 
+	sceneObjects.push_back(floorPlane);
 
-	Sphere *sphere1 = new Sphere(glm::vec3(-5.0, 0.0, -90.0), 15.0);
+	Plane *ceilingPlane = new Plane(
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX),    // Point A
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX),    // Point B
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX)     // Point D
+	);
+	ceilingPlane->setColor(glm::vec3(0.58, 0.85, 0));   //Set colour 
+	sceneObjects.push_back(ceilingPlane);
+
+	Plane *leftWallPlane = new Plane(
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX),    // Point A
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX),    // Point B
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX)     // Point D
+	);
+	leftWallPlane->setColor(glm::vec3(0.9, 0.8, 0));   //Set colour
+	sceneObjects.push_back(leftWallPlane);
+
+	Plane *rightWallPlane = new Plane(
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX),    // Point A
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX),    // Point B
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX)     // Point D
+	);
+	rightWallPlane->setColor(glm::vec3(0.5, 0.4, 0));   //Set colour
+	sceneObjects.push_back(rightWallPlane);
+
+	Plane *backWallPlane = new Plane(
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX),    // Point A
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX),    // Point B
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX)     // Point D
+	);
+	backWallPlane->setColor(glm::vec3(0.2, 0.8, 0));   //Set colour
+	backWallPlane->setReflectivity(false);
+	sceneObjects.push_back(backWallPlane);
+
+
+
+
+	Sphere *sphere1 = new Sphere(glm::vec3(-5.0, 0.0, 150.0), 15.0);
 	sphere1->setColor(glm::vec3(0, 0, 1));   //Set colour to blue
 	sphere1->setReflectivity(true, 0.8);
 	sceneObjects.push_back(sphere1);		 //Add sphere to scene objects
 
-	Sphere *sphere2 = new Sphere(glm::vec3(5.0, -10.0, -60.0), 5.0);
+	Sphere *sphere2 = new Sphere(glm::vec3(5.0, -10.0, 140.0), 5.0);
 	sphere2->setColor(glm::vec3(0, 1, 1));   //Set colour to blue
 	sceneObjects.push_back(sphere2);		 //Add sphere to scene objects
 
-	Sphere *sphere3 = new Sphere(glm::vec3(5.0, 5.0, -70.0), 4.0);
+	Sphere *sphere3 = new Sphere(glm::vec3(5.0, 5.0, 90.0), 4.0);
 	sphere3->setColor(glm::vec3(1, 0, 1));   //Set colour to blue
 	sceneObjects.push_back(sphere3);		 //Add sphere to scene objects
 
-	Sphere *sphere4 = new Sphere(glm::vec3(10.0, 10.0, -60.0), 3.0);
+	Sphere *sphere4 = new Sphere(glm::vec3(10.0, 10.0, 105.0), 3.0);
 	sphere4->setColor(glm::vec3(1, 0, 0));   //Set colour to blue
 	sceneObjects.push_back(sphere4);		 //Add sphere to scene objects
 
-	
+
 
 }
 
