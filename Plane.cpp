@@ -23,6 +23,8 @@ float Plane::intersect(glm::vec3 p0, glm::vec3 dir)
     float t = glm::dot(vdif, n)/d_dot_n;
 	if(t < 0) return -1;
 
+	if (glm::dot(dir,n) > 0) return -1; //this lets me put the camera behind a plane and not see the back side
+
 	glm::vec3 q = p0 + dir*t;
 	if(isInside(q)) return t;
 	else return -1;

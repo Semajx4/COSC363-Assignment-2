@@ -11,6 +11,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "Sphere.h"
+#include "Cylinder.h"
 #include "SceneObject.h"
 #include "Ray.h"
 #include <GL/freeglut.h>
@@ -18,7 +19,7 @@
 #include "TextureBMP.h"
 using namespace std;
 
-const float EDIST = 50.0;
+const float EDIST = 40.0;
 const int NUMDIV = 1000;
 const int MAX_STEPS = 5;
 const float XMIN = -20.0;
@@ -30,8 +31,8 @@ const float XMIN_BOX = -50.0;
 const float XMAX_BOX = 50.0;
 const float YMIN_BOX = -50.0;
 const float YMAX_BOX = 50.0;
-const float ZMIN_BOX = 0.0;
-const float ZMAX_BOX = 400.0;
+const float ZMIN_BOX = -50.0;
+const float ZMAX_BOX = 50.0;
 
 TextureBMP texture;
 
@@ -45,60 +46,42 @@ vector<SceneObject*> sceneObjects;
 glm::vec3 trace(Ray ray, int step)
 {
 	glm::vec3 backgroundCol(0);						//Background colour = (0,0,0)
-	glm::vec3 lightPos(10, 40, 3);					//Light's position
-	glm::vec3 color(0);
+	glm::vec3 lightPos(0., 45., 0.);					//Light's position
+	glm::vec3 color(1,1,0.5);
 	SceneObject* obj;
 
     ray.closestPt(sceneObjects);					//Compare the ray with all objects in the scene
     if(ray.index == -1) return backgroundCol;		//no intersection
 	obj = sceneObjects[ray.index];					//object on which the closest point of intersection is found
 	if(ray.index == 0) {
-
-		int squareSize = 10;
-		int iz = (abs(ray.hit.z) / squareSize); // Calculate the stripe index in x-direction
-		int ix = 0;
-		if (ray.hit.x < 0) {
-			ix = abs(ray.hit.x)/squareSize + 1;
+		float squareSize = 10;
+		bool isZ = glm::mod(ray.hit.z,squareSize) > squareSize*0.5;
+		bool isX = glm::mod(ray.hit.x,squareSize) > squareSize*0.5;
+		if (isX xor isZ){
+			color = glm::vec3(0,0,0);
 		} else {
-			ix = abs(ray.hit.x)/squareSize;
+			color = glm::vec3(1,1,1); // Color 2 for the other set of squares
 
-		}
-		 // Calculate the stripe index in z-direction
-		int k = (ix + iz) % 2; // Sum of the stripe indices modulo 2 to create a checkered pattern
-		
-		if (k == 0) {
-			color = glm::vec3(0, 0, 0); // Color 1 for one set of squares
-		} else {
-			color = glm::vec3(1, 1, 1); // Color 2 for the other set of squares
 		}
 		obj->setColor(color);
-
-		int x1 = -15;
-		int x2 = 5;
-		int y1 = 10;
-		int y2 = 90;
-		int texcoords = (ray.hit.x - x1)/(x2-x1);
-		int texcoordt = (ray.hit.z - y1)/(y2-y1);
-		if(texcoords > 0 && texcoords < 1 &&
-		texcoordt > 0 && texcoordt < 1)
-		{
-			color=texture.getColorAt(texcoords, texcoordt);
-			obj->setColor(color);
-		}
 
 	
 	} 
 	if (ray.index == 5) {
-		int x1 = -15;
-		int x2 = 5;
-		int y1 = 60;
-		int y2 = 90;
-		int texcoordt = (ray.hit.x - x1)/(x2-x1);
-		int texcoords = (ray.hit.y - y1)/(y2-y1);
-		if(texcoords > 0 && texcoords < 1 &&
-		texcoordt > 0 && texcoordt < 1)
-		{
-			color=texture.getColorAt(texcoords, texcoordt);
+		obj->setColor(glm::vec3(1, 1, 1));
+		float x1 = -20;
+		float x2 = 20;
+		float y1 = -20;
+		float y2 = 20;
+		float texcoordt = (ray.hit.x - x1)/(x2-x1);
+		float texcoords = (ray.hit.y - y1)/(y2-y1);
+		if(
+			texcoords > 0 &&
+			texcoords < 1 &&
+			texcoordt > 0 &&
+			texcoordt < 1
+		) {
+			color = texture.getColorAt(texcoords, texcoordt);
 			obj->setColor(color);
 		}
 	}
@@ -136,7 +119,7 @@ void display()
 	float xp, yp;  //grid point
 	float cellX = (XMAX - XMIN) / NUMDIV;  //cell width
 	float cellY = (YMAX - YMIN) / NUMDIV;  //cell height
-	glm::vec3 eye(0., 0., 5.);
+	glm::vec3 eye(0., 0., -200.);
 
 	glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
@@ -203,7 +186,8 @@ void initialize()
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
 		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX)     // Point D
 	);
-	ceilingPlane->setColor(glm::vec3(0.58, 0.85, 0));   //Set colour 
+	ceilingPlane->setColor(glm::vec3(1, 1, 1));   //Set colour 
+	ceilingPlane->setReflectivity(true, 0.01);
 	sceneObjects.push_back(ceilingPlane);
 
 	Plane *rightWallPlane = new Plane(
@@ -212,8 +196,7 @@ void initialize()
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX)     // Point D
 	);
-	rightWallPlane->setColor(glm::vec3(0.9, 0.8, 0));   //Set colour
-	rightWallPlane->setReflectivity(true);
+	rightWallPlane->setColor(glm::vec3(0, 0.8, 0));   //Set colour
 	sceneObjects.push_back(rightWallPlane);
 
 	Plane *leftWallPlane = new Plane(
@@ -222,8 +205,10 @@ void initialize()
 		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
 		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX)     // Point D
 	);
-	leftWallPlane->setColor(glm::vec3(0.5, 0.4, 0));   //Set colour
+	leftWallPlane->setColor(glm::vec3(0.8, 0, 0));   //Set colour
 	sceneObjects.push_back(leftWallPlane);
+
+
 
 	Plane *backWallPlane = new Plane(
 		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX),    // Point A
@@ -231,28 +216,30 @@ void initialize()
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX),    // Point C
 		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX)     // Point D
 	);
-	backWallPlane->setColor(glm::vec3(0.2, 0.8, 0));   //Set colour
-	backWallPlane->setReflectivity(false);
+	backWallPlane->setColor(glm::vec3(1, 1, 1));   //Set colour
 	sceneObjects.push_back(backWallPlane);
 
 	Plane *frontWallPlane = new Plane(
-		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX),    // Point A
-		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX),     // Point D
-		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX),    // Point C
-		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX)   // Point B
-
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX),   // Point B
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX),    // Point C
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX),     // Point D
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX)    // Point A
 	);
-	frontWallPlane->setColor(glm::vec3(1, 0.8, 0));   //Set colour
+	frontWallPlane->setColor(glm::vec3(1, 1, 1));   //Set colour
 	frontWallPlane->setReflectivity(false);
 	sceneObjects.push_back(frontWallPlane);
 
 
 
 
-	Sphere *bigSphere = new Sphere(glm::vec3(0.0, 0.0, 100.0), 15.0);
+	Sphere *bigSphere = new Sphere(glm::vec3(0.0, 0, 0.0), 15.0);
 	bigSphere->setColor(glm::vec3(0, 0, 0));   //Set colour to blue
 	bigSphere->setReflectivity(true, 0.8);
 	sceneObjects.push_back(bigSphere);		 //Add sphere to scene objects
+
+	Cylinder *cyl = new Cylinder(glm::vec3(20.0, -50, -20.0), 15.0, 15);
+	cyl->setColor(glm::vec3(2, 1, 3));   //Set colour to blue
+	sceneObjects.push_back(cyl);
 
 }
 
@@ -260,7 +247,7 @@ void initialize()
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB );
-    glutInitWindowSize(1280, 1080);
+    glutInitWindowSize(1080, 1080);
     glutInitWindowPosition(20, 20);
     glutCreateWindow("Raytracing");
 
