@@ -32,6 +32,10 @@ glm::vec3 SceneObject::lighting(glm::vec3 lightPos, glm::vec3 viewVec, glm::vec3
 	glm::vec3 colorSum = ambientTerm * color_ + lDotn * color_ + specularTerm * glm::vec3(1);
 	return colorSum;
 }
+glm::mat4 SceneObject::getTransform()
+{
+	return transmat_;
+}
 
 float SceneObject::getReflectionCoeff()
 {
@@ -78,6 +82,10 @@ bool SceneObject::isSpecular()
 bool SceneObject::isTransparent()
 {
 	return tran_;
+}
+bool SceneObject::isTransformed()
+{
+	return tform_;
 }
 
 void SceneObject::setColor(glm::vec3 col)
@@ -127,4 +135,10 @@ void SceneObject::setTransparency(bool flag, float tran_coeff)
 {
 	tran_ = flag;
 	tranc_ = tran_coeff;
+}
+
+void SceneObject::setTransform(bool flag, glm::mat4 transform){
+	tform_ = flag;
+	transmat_ = transform;
+	normalTransform_ = glm::transpose(transform);
 }

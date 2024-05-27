@@ -13,62 +13,37 @@
 * Cylinder's intersection method.  The input is a ray. 
 */
 float Cylinder::intersect(glm::vec3 p0, glm::vec3 dir){
+   glm::vec3 vdif = p0 - center;
 
-     // Define the cylinder's axis direction (assuming the cylinder's axis is aligned with the y-axis)
-    glm::vec3 cylAxis = glm::vec3(0.0f, 1.0f, 0.0f);
+    float a = dir.x * dir.x + dir.z * dir.z;
+    float b = 2 * (dir.x * vdif.x + dir.z * vdif.z);
+    float c = vdif.x * vdif.x + vdif.z * vdif.z - radius * radius;
+    float delta = b * b - 4 * a * c;
 
-    // Compute the vector from the ray origin to the cylinder center
-    glm::vec3 U = p0 - center;
-    
-    // Components of the direction vector orthogonal and parallel to the cylinder's axis
-    glm::vec3 V_perp = dir - glm::dot(dir, cylAxis) * cylAxis;
-    glm::vec3 U_perp = U - glm::dot(U, cylAxis) * cylAxis;
+    if(delta < 0.001) return -1;
 
-    float a = glm::dot(V_perp, V_perp);
-    float b = 2.0f * glm::dot(V_perp, U_perp);
-    float c = glm::dot(U_perp, U_perp) - radius * radius;
+    float t1 = (-b - sqrt(delta)) / (2 * a);
+    float t2 = (-b + sqrt(delta)) / (2 * a);
 
-    // Calculate the discriminant
-    float discriminant = b * b - 4 * a * c;
+    float pt1 = p0.y + t1 * dir.y;
+    float pt2 = p0.y + t2 * dir.y;
 
-    if (discriminant >= 1e-4) {
-        float sqrtDiscriminant = sqrt(discriminant);
-        float t1 = (-b - sqrtDiscriminant) / (2.0f * a);
-        float t2 = (-b + sqrtDiscriminant) / (2.0f * a);
+    if (pt1 > center.y + height && pt2 < center.y + height){
+        return (center.y + height - p0.y) / dir.y;
+    } 
 
-        // Calculate intersection points
-        glm::vec3 intersection1 = p0 + t1 * dir;
-        glm::vec3 intersection2 = p0 + t2 * dir;
+    if (pt1 > center.y + height || pt1 < center.y){
+        t1 = -1;
+    } 
 
-        // Check if the intersection points are within the height bounds of the cylinder
-        bool isInBounds1 = (intersection1.y >= center.y) && (intersection1.y <= center.y + height);
-        bool isInBounds2 = (intersection2.y >= center.y) && (intersection2.y <= center.y + height);
-
-        // Determine the valid intersection point
-        if (t1 > 0.0f && isInBounds1) {
-            return t1;
-        } else if (t2 > 0.0f && isInBounds2) {
-            return t2;
-        }
-
-    }
-       // Check intersection with the bottom cap
-    float tBottom = (center.y - p0.y) / dir.y;
-    glm::vec3 bottomIntersection = p0 + tBottom * dir;
-    if (tBottom > 0 && glm::distance(glm::vec2(bottomIntersection.x, bottomIntersection.z), glm::vec2(center.x, center.z)) <= radius) {
-        return tBottom;
+    if (pt2 > center.y + height || pt2 < center.y){
+        t2 = -1; 
     }
 
-    float tTop = (center.y + height - p0.y) / dir.y;
-    glm::vec3 topIntersection = p0 + tTop * dir;
-    if (tTop > 0 && glm::distance(glm::vec2(topIntersection.x, topIntersection.z), glm::vec2(center.x, center.z)) <= radius) {
-        return tTop;
-    }
-    // If both intersections are invalid or behind the ray origin, return -1
-    return -1.0f;
+    return (t1 > t2) ? (t2 >= 0 ? t2 : t1) : (t1 >= 0 ? t1 : t2);
 
 
-};
+}
 
 
 /**
@@ -77,15 +52,18 @@ float Cylinder::intersect(glm::vec3 p0, glm::vec3 dir){
 */
 glm::vec3 Cylinder::normal(glm::vec3 p)
 {   
-    // Check if the point is on the bottom cap
-    if (fabs(p.y - center.y) < 1e-4) {
-        return glm::vec3(0.0f, -1.0f, 0.0f);
-    }
+    const float epsilon = 1e-4f;
+
     // Check if the point is on the top cap
-    if (fabs(p.y - (center.y + height)) < 1e-4) {
+    if (fabs(p.y - (center.y + height)) < epsilon) {
         return glm::vec3(0.0f, 1.0f, 0.0f);
     }
+    
+    // Calculate the normal for the side surface
     glm::vec3 n = glm::vec3(p.x - center.x, 0.0f, p.z - center.z);
     n = glm::normalize(n);
+
     return n;
 };
+
+

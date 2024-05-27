@@ -19,10 +19,13 @@ class SceneObject
 {
 protected:
 	glm::vec3 color_ = glm::vec3(1);  //material color
+	glm::mat4 transmat_ = glm::mat4(1.0f);
+	glm::mat4 normalTransform_ = glm::mat4(1.0f);
 	bool refl_ = false;  //reflectivity: true/false
 	bool refr_ = false;  //refractivity: true/false
 	bool spec_ = true;   //specularity: true/false
 	bool tran_ = false;  //transparency: true/false
+	bool tform_ = false;
 	float reflc_ = 0.8;  //coefficient of reflection
 	float refrc_ = 0.8;  //coefficient of refraction
 	float tranc_ = 0.8;  //coefficient of transparency
@@ -44,7 +47,10 @@ public:
 	void setSpecularity(bool flag);
 	void setTransparency(bool flag);
 	void setTransparency(bool flag, float tran_coeff);
+	void setTransform(bool flag, glm::mat4 transform);
+
 	glm::vec3 getColor();
+	glm::mat4 getTransform();
 	float getReflectionCoeff();
 	float getRefractionCoeff();
 	float getTransparencyCoeff();
@@ -54,6 +60,7 @@ public:
 	bool isRefractive();
 	bool isSpecular();
 	bool isTransparent();
+	bool isTransformed();
 };
 
 #endif
