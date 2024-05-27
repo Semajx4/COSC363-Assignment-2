@@ -229,7 +229,48 @@ glm::vec3 trace(Ray ray, int step)
 
 	return color;
 }
+#include <vector>
+#include <glm/glm.hpp>
 
+bool similarColoursNearby(int i, int j, const std::vector<std::vector<glm::vec3>>& colors) {
+    // Define the threshold for color similarity
+    float threshold = 0.1f; // Adjust as needed
+    
+    // Get the color of the cell at position (i, j)
+    glm::vec3 targetColor = colors[i][j];
+    
+    // Define the neighboring offsets (assuming 8-connected neighbors)
+    std::vector<std::pair<int, int>> offsets = {
+        {-1, -1}, {-1, 0}, {-1, 1},
+        {0, -1},           {0, 1},
+        {1, -1},  {1, 0},  {1, 1}
+    };
+    
+    // Iterate over the neighboring cells
+    for (const auto& offset : offsets) {
+        int ni = i + offset.first;
+        int nj = j + offset.second;
+        
+        // Check if the neighboring cell is within bounds
+        if (ni >= 0 && ni < colors.size() && nj >= 0 && nj < colors[0].size()) {
+            // Get the color of the neighboring cell
+            glm::vec3 neighborColor = colors[ni][nj];
+            
+            // Calculate the color difference between the target color and the neighbor color
+            float colorDifference = glm::length(targetColor - neighborColor);
+            
+            // Check if the color difference is within the threshold
+            if (colorDifference > threshold) {
+                // Colors are not similar, return false
+                return false;
+            }
+        }
+    }
+    
+    // All neighboring colors are similar, return true
+    return true;
+
+}
 //---The main display module -----------------------------------------------------------
 // In a ray tracing application, it just displays the ray traced image by drawing
 // each cell as a quad.
@@ -247,29 +288,52 @@ void display()
 
 	glBegin(GL_QUADS); // Each cell is a tiny quad.
 
-	for (int i = 0; i < NUMDIV * SS_FACTOR; i++) // Scan every cell of the image plane
+	std::vector<std::vector<glm::vec3>> colors(NUMDIV, std::vector<glm::vec3>(NUMDIV));
+
+	for (int i = 0; i < NUMDIV; i++) // Scan every cell of the image plane
 	{
 		xp = XMIN + i * cellX;
-		for (int j = 0; j < NUMDIV * SS_FACTOR; j++)
+		for (int j = 0; j < NUMDIV; j++)
+		{
+			yp = YMIN + j * cellY;
+			glm::vec3 dir(xp + 0.5 * cellX, yp + 0.5 * cellY, EDIST);	//direction of the primary ray
+			Ray ray = Ray(eye, dir);
+			glm::vec3 col = trace(ray, 1); //Trace the primary ray and get the colour value
+			colors[i][j] = col; //set colors i,j to its color val.
+		}
+	}
+
+	for (int i = 0; i < NUMDIV; i++) // Scan every cell of the image plane
+	{
+		xp = XMIN + i * cellX;
+		for (int j = 0; j < NUMDIV; j++)
 		{
 			yp = YMIN + j * cellY;
 
-			glm::vec3 col_avg(0.0f);
-			for (int k = 0; k < SS_FACTOR; k++)
-			{
-				for (int l = 0; l < SS_FACTOR; l++)
-				{
-					glm::vec3 dir(xp + (k + (float)rand() / RAND_MAX) * cellX,
-								  yp + (l + (float)rand() / RAND_MAX) * cellY,
-								  EDIST);
-					Ray ray = Ray(eye, dir);
-					glm::vec3 col = trace(ray, 1); // Trace the primary ray and get the colour value
-					col_avg += col;
-				}
-			}
 
-			col_avg /= (SS_FACTOR * SS_FACTOR);
-			glColor3f(col_avg.r, col_avg.g, col_avg.b);
+			//if adjacent cells are not the same colour
+			glm::vec3 cellColour = colors[i][j];
+			if(!similarColoursNearby(i,j, colors)){
+				glm::vec3 col_avg(0.0f);
+				for (int k = 0; k < SS_FACTOR; k++)
+				{
+					for (int l = 0; l < SS_FACTOR; l++)
+					{
+						glm::vec3 dir(xp + (k + (float)rand() / RAND_MAX) * cellX,
+									yp + (l + (float)rand() / RAND_MAX) * cellY,
+									EDIST);
+						Ray ray = Ray(eye, dir);
+						glm::vec3 col = trace(ray, 1); // Trace the primary ray and get the colour value
+						col_avg += col;
+					}
+				}
+
+				col_avg /= (SS_FACTOR * SS_FACTOR);
+				cellColour = col_avg;
+			} 
+
+			
+			glColor3f(cellColour.r, cellColour.g, cellColour.b);
 			glVertex2f(xp, yp); // Draw each cell with its color value
 			glVertex2f(xp + cellX, yp);
 			glVertex2f(xp + cellX, yp + cellY);
