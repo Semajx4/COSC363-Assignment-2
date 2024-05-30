@@ -334,8 +334,8 @@ void initialize()
 
 	glClearColor(0, 0, 0, 1);
 
-	texture = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Butterfly.bmp"); //Butterfly texture
-	earthTex = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Earth.bmp"); //Earth texture
+	texture = TextureBMP("Butterfly.bmp"); //Butterfly texture
+	earthTex = TextureBMP("Earth.bmp"); //Earth texture
 
 	// Define the planes of the Cornell box
 	Plane *floorPlane = new Plane( //Index 0 -> Will be colored in a checkered pattern
