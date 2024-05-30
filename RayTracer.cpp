@@ -203,7 +203,6 @@ glm::vec3 trace(Ray ray, int step)
 		float refractionFactor = 1 - etaRatio * etaRatio * (1 - cosineOfOIncidentAngle * cosineOfOIncidentAngle);
 		if (refractionFactor < 0)
 		{
-			// Total internal reflection, treat as a perfect mirror reflection
 			refractedDirection = glm::reflect(ray.dir, normalVec);
 		}
 		else
@@ -211,18 +210,18 @@ glm::vec3 trace(Ray ray, int step)
 			refractedDirection = etaRatio * ray.dir + (etaRatio * cosineOfOIncidentAngle - sqrtf(refractionFactor)) * normalVec;
 		}
 		glm::vec3 offset = normalVec * 0.001f;
-		Ray refractedRay(ray.hit + offset, refractedDirection); // Create the refracted ray
+		Ray refractedRay(ray.hit + offset, refractedDirection);
 
-		// Trace the refracted ray and get its color
+		
 		glm::vec3 refractedColor = trace(refractedRay, step + 1);
 
-		// Combine the original color with the refracted color
+		
 		float refractionCoeff = obj->getRefractionCoeff();
 		color = (1.0f - refractionCoeff) * color + refractionCoeff * refractedColor;
 	}
 	if (FOGGY){
 		float z1 = ZMIN_BOX;
-		float z2 = ZMAX_BOX+50;
+		float z2 = ZMAX_BOX+50; //most foggy should be past the back of the box so that it is not completly white there.
 		float lambda = ((ray.hit.z)-z1)/(z2-z1);
 		return (1-lambda)*color + lambda*glm::vec3(1,1,1);
 	} else {
@@ -230,13 +229,12 @@ glm::vec3 trace(Ray ray, int step)
 	}
 	
 }
-#include <vector>
-#include <glm/glm.hpp>
 
-#include <vector>
-#include <glm/glm.hpp>
 
-bool isEdge(int i, int j, const std::vector<std::vector<glm::vec3>>& colors, float threshold = 0.1f) {
+/*
+Function to determine if a pixel is the edge of two or more color values
+*/
+bool isEdge(int i, int j, const std::vector<std::vector<glm::vec3>>& colors, float threshold = 0.01f) {
     glm::vec3 targetColor = colors[i][j];
     std::vector<std::pair<int, int>> offsets = {
         {-1, -1}, {-1, 0}, {-1, 1},
@@ -278,7 +276,7 @@ void display()
 
 	std::vector<std::vector<glm::vec3>> colors(NUMDIV, std::vector<glm::vec3>(NUMDIV));
 
-	for (int i = 0; i < NUMDIV; i++) // Scan every cell of the image plane
+	for (int i = 0; i < NUMDIV; i++) // Scan every cell of the image plane in order to store the color values of each cell
 	{
 		xp = XMIN + i * cellX;
 		for (int j = 0; j < NUMDIV; j++)
@@ -291,14 +289,13 @@ void display()
 		}
 	}
 
-	for (int i = 0; i < NUMDIV; i++) {
+	for (int i = 0; i < NUMDIV; i++) { //Loop through all the cells again
         xp = XMIN + i * cellX;
         for (int j = 0; j < NUMDIV; j++) {
             yp = YMIN + j * cellY;
 
             glm::vec3 cellColour = colors[i][j];
-            if (isEdge(i, j, colors) && ANTI_ALIAS) {
-                ; // Number of additional samples per dimension
+            if (isEdge(i, j, colors) && ANTI_ALIAS) { //Check if the cell is and edge
                 glm::vec3 col_avg(0.0f);
                 for (int k = 0; k < SS_FACTOR; k++) {
                     for (int l = 0; l < SS_FACTOR; l++) {
@@ -337,56 +334,53 @@ void initialize()
 
 	glClearColor(0, 0, 0, 1);
 
-	texture = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Butterfly.bmp");
-	earthTex = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Earth.bmp");
+	texture = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Butterfly.bmp"); //Butterfly texture
+	earthTex = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Earth.bmp"); //Earth texture
 
 	// Define the planes of the Cornell box
-	Plane *floorPlane = new Plane(
-		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX), // Point A
-		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX), // Point B
-		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX), // Point C
-		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX)	 // Point D
+	Plane *floorPlane = new Plane( //Index 0 -> Will be colored in a checkered pattern
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX), 
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX), 
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX), 
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX)	
 
 	);
-	floorPlane->setColor(glm::vec3(0.5, 0.8, 0)); // Set colour
 	sceneObjects.push_back(floorPlane);
 
-	Plane *ceilingPlane = new Plane(
-		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX), // Point A
-		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX), // Point B
-		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), // Point C
-		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX)	 // Point D
+	Plane *ceilingPlane = new Plane( //Index 1 -> will be colored in a procedurally generated pattern
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX), 
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX), 
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), 
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX)	 
 	);
-	ceilingPlane->setColor(glm::vec3(1, 1, 1)); // Set colour
 	sceneObjects.push_back(ceilingPlane);
 
 	Plane *rightWallPlane = new Plane(
-		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX), // Point A
-		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX), // Point B
-		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), // Point C
-		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX)	 // Point D
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMIN_BOX), 
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX), 
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), 
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX)	 
 	);
-	rightWallPlane->setColor(glm::vec3(0.2, 0.8, 0.2)); // Set colour
+	rightWallPlane->setColor(glm::vec3(0.2, 0.8, 0.2)); // Set colour: Green
 	sceneObjects.push_back(rightWallPlane);
 
 	Plane *leftWallPlane = new Plane(
-		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX), // Point A
-		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX), // Point B
-		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX), // Point C
-		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX)	 // Point D
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMIN_BOX), 
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX), 
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX), 
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX)	 
 	);
-	leftWallPlane->setColor(glm::vec3(0.7, 0.2, 0.2)); // Set colour
-	//leftWallPlane->setReflectivity(true, 0.7);
+	leftWallPlane->setColor(glm::vec3(0.7, 0.2, 0.2)); // Set colour: Red
 	sceneObjects.push_back(leftWallPlane);
 
 	Plane *backWallPlane = new Plane(
-		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX), // Point A
-		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX), // Point B
-		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), // Point C
-		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX)	 // Point D
+		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX), 
+		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX), 
+		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), 
+		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX)	 
 	);
-	backWallPlane->setColor(glm::vec3(0.0, 0.0, 0.0)); // Set colour
-	backWallPlane->setReflectivity(true, 1);
+	backWallPlane->setColor(glm::vec3(0.0, 0.0, 0.0)); // Set colour: black
+	backWallPlane->setReflectivity(true, 1); //Make surface completly reflective.
 	sceneObjects.push_back(backWallPlane);
 
 	Plane *frontWallPlane = new Plane(
@@ -398,26 +392,25 @@ void initialize()
 	frontWallPlane->setColor(glm::vec3(0, 0, 1)); // Set colour
 	sceneObjects.push_back(frontWallPlane);
 
-	glm::mat4 transform = glm::mat4(1.0);
-	transform = glm::scale(transform, glm::vec3(1, 1.1, 1));
+	glm::mat4 transform = glm::mat4(1.0); //Set transformation matrix to the identity matrix
+	transform = glm::scale(transform, glm::vec3(1, 1.1, 1)); //Scale in y direction by 1.1
 
-	Sphere *smallSphere = new Sphere(glm::vec3(-25.0, -20.0, 20.0), 10.0);
-	smallSphere->setColor(glm::vec3(0, 0, 0)); // 
-	smallSphere->setReflectivity(true, .8);
-	smallSphere->setTransform(true, transform);
+	Sphere *transformedSphere = new Sphere(glm::vec3(-25.0, -20.0, 20.0), 10.0);
+	transformedSphere->setColor(glm::vec3(0, 0, 0)); // Set color: black
+	transformedSphere->setReflectivity(true, .8); //Set to reflective
+	transformedSphere->setTransform(true, transform); //Squish the sphere
+	sceneObjects.push_back(transformedSphere);
 
-	sceneObjects.push_back(smallSphere);
+	Sphere *refractiveSphere = new Sphere(glm::vec3(25.0, -35, -40.0), 8.0);
+	refractiveSphere->setColor(glm::vec3(1, 1, 1)); //set color: white
+	refractiveSphere->setRefractivity(true, 1, 1.5);
+	sceneObjects.push_back(refractiveSphere);
 
-	Sphere *smallSphere2 = new Sphere(glm::vec3(25.0, -35, -40.0), 8.0);
-	smallSphere2->setColor(glm::vec3(1, 1, 1)); // 
-	smallSphere2->setRefractivity(true, 1, 1.5);
-	sceneObjects.push_back(smallSphere2);
-
-	Sphere *smallSphere3 = new Sphere(glm::vec3(-20.0, -35, -30.0), 8.0);
-	smallSphere3->setColor(glm::vec3(1, 1, 1)); // 
-	smallSphere3->setTransparency(true, 0.8);
-	smallSphere3->setReflectivity(true, 0.1);
-	sceneObjects.push_back(smallSphere3);
+	Sphere *transparentSphere = new Sphere(glm::vec3(-20.0, -35, -30.0), 8.0);
+	transparentSphere->setColor(glm::vec3(1, 1, 1)); // set color: black
+	transparentSphere->setTransparency(true, 0.8);
+	transparentSphere->setReflectivity(true, 0.1);
+	sceneObjects.push_back(transparentSphere);
 
 	Cylinder *cyl = new Cylinder(glm::vec3(15, -50, 25.0),2, 20);
 	cyl->setColor(glm::vec3(0, 0, 1)); // Set colour to blue
