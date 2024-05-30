@@ -52,7 +52,7 @@ glm::vec3 Sphere::normal(glm::vec3 p)
     glm::vec3 n = p - center;
 
     // Transform the normal vector
-   // n = glm::vec3(normalTransform * glm::vec4(n, 0.0f)); // 0.0f as w-component for direction
+    n = glm::vec3(normalTransform * glm::vec4(n, 0.0f)); // 0.0f as w-component for direction
 
     n = glm::normalize(n);
     return n;

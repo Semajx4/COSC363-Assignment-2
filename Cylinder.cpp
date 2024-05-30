@@ -28,21 +28,19 @@ float Cylinder::intersect(glm::vec3 p0, glm::vec3 dir){
     float pt1 = p0.y + t1 * dir.y;
     float pt2 = p0.y + t2 * dir.y;
 
-    if (pt1 > center.y + height && pt2 < center.y + height){
+    if (pt1 > center.y + height && pt2 < center.y + height)
+    {
         return (center.y + height - p0.y) / dir.y;
     } 
-
-    if (pt1 > center.y + height || pt1 < center.y){
+    if (pt1 > center.y + height || pt1 < center.y)
+    {
         t1 = -1;
     } 
-
-    if (pt2 > center.y + height || pt2 < center.y){
+    if (pt2 > center.y + height || pt2 < center.y)
+    {
         t2 = -1; 
     }
-
     return (t1 > t2) ? (t2 >= 0 ? t2 : t1) : (t1 >= 0 ? t1 : t2);
-
-
 }
 
 
@@ -58,7 +56,6 @@ glm::vec3 Cylinder::normal(glm::vec3 p)
     if (fabs(p.y - (center.y + height)) < epsilon) {
         return glm::vec3(0.0f, 1.0f, 0.0f);
     }
-    
     // Calculate the normal for the side surface
     glm::vec3 n = glm::vec3(p.x - center.x, 0.0f, p.z - center.z);
     n = glm::normalize(n);

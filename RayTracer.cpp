@@ -20,11 +20,12 @@
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 using namespace std;
-
-const float EDIST = 40.0;
+const bool FOGGY = false;
+const bool ANTI_ALIAS = true;
+const float EDIST = 50.0;
 const int NUMDIV = 1000;
 const int MAX_STEPS = 5;
-const int SS_FACTOR = 1;
+const int SS_FACTOR = 2;
 const float XMIN = -20.0;
 const float XMAX = 20.0;
 const float YMIN = -25.0;
@@ -37,6 +38,8 @@ const float YMAX_BOX = 50.0;
 const float ZMIN_BOX = -50.0;
 const float ZMAX_BOX = 50.0;
 TextureBMP texture;
+
+TextureBMP earthTex;
 
 vector<SceneObject *> sceneObjects;
 
@@ -56,13 +59,6 @@ float getShadowFactor(SceneObject *obj)
 	}
 }
 
-bool isBetweenWaves(float rayhitx, float rayhity, float stepSize, float amp, float omega, float yshift){
-	float sinX = amp*sin((1/omega)*rayhitx)+yshift;
-	float sinXwStep = amp*sin((1/omega)*rayhitx )+stepSize+yshift;
-	float y = glm::mod(rayhity, (stepSize + omega));
-	bool out = (y > sinX) && (y < sinXwStep);
-	return out;
-}
 
 //---The most important function in a ray tracer! ----------------------------------
 //   Computes the colour value obtained by tracing a ray and finding its
@@ -82,12 +78,12 @@ glm::vec3 trace(Ray ray, int step)
 	obj = sceneObjects[ray.index]; // object on which the closest point of intersection is found
 	if (ray.index == 0)
 	{
-		float squareSize = 10;
+		float squareSize = 50;
 		bool isZ = glm::mod(ray.hit.z, squareSize) > squareSize * 0.5;
 		bool isX = glm::mod(ray.hit.x, squareSize) > squareSize * 0.5;
 		if (isX xor isZ)
 		{
-			color = glm::vec3(0, 0, 0);
+			color = glm::vec3(0.5, 0.5, 0.5);
 		}
 		else
 		{
@@ -95,38 +91,32 @@ glm::vec3 trace(Ray ray, int step)
 		}
 		obj->setColor(color);
 	}
-	if (ray.index == 1)
-	{
-		float stepSize = 5;
-		float amp = 2.50;
-		float omega = 5.00;
-		float yshift = 2.50;
-		
-		if (ray.hit.x > 0){
-			if (isBetweenWaves(ray.hit.x, ray.hit.y, stepSize,amp, omega, yshift)){
-				color = glm::vec3(1,1,1);
-			} else {
-				color = glm::vec3(0,0,0);
-			}
+	if(ray.index == 1) {
+		float blueSize = (30);
+		float redSize = (50);
 
-		} else{
-			if (isBetweenWaves(-ray.hit.x, ray.hit.y, stepSize,amp, omega, yshift)){
-				color = glm::vec3(1,1,1);
-			} else {
-				color = glm::vec3(0,0,0);
-			}
+		bool isZBlue = glm::mod(ray.hit.z,blueSize) > blueSize*0.5;
+		bool isXBlue = glm::mod(ray.hit.x,blueSize) >blueSize*0.5;
+		bool isZRed = glm::mod(ray.hit.z,redSize) >redSize*0.5;
+		bool isXRed = glm::mod(ray.hit.x,redSize) >redSize*0.5;
 
-
+		if ((isXBlue xor isZBlue)){
+			color = glm::vec3(0,0,1);
+		} else if ((isXRed xor isZRed )) {
+			color = glm::vec3(1,0,0);
+		} else {
+			color = glm::vec3(1.,1.,1.);
 		}
 		obj->setColor(color);
-	}
+	} 
+
 	if (ray.index == 5)
 	{
-		obj->setColor(glm::vec3(1, 1, 1));
-		float x1 = -20;
-		float x2 = 20;
-		float y1 = -20;
-		float y2 = 20;
+		obj->setColor(glm::vec3(1,1, 1));
+		float x1 = 40;
+		float x2 = 0;
+		float y1 = 0;
+		float y2 = -40;
 		float texcoordt = (ray.hit.x - x1) / (x2 - x1);
 		float texcoords = (ray.hit.y - y1) / (y2 - y1);
 		if (
@@ -140,6 +130,19 @@ glm::vec3 trace(Ray ray, int step)
 		}
 	}
 
+
+	if (ray.index == 10 )
+	{
+		glm::vec3 normalVec = obj->normal(ray.hit);
+
+        float texcoordt = atan2(-normalVec.z, normalVec.x)/(2*M_PI) + 0.5;
+        float texcoords =  -asin(normalVec.y)/ M_PI + 0.5;
+        if(texcoords > 0 && texcoords < 1 && texcoordt > 0 && texcoordt < 1) {
+            color=earthTex.getColorAt(texcoords, texcoordt);
+            obj->setColor(color);
+        }
+	}
+
 	color = obj->lighting(lightPos1, -ray.dir, ray.hit); // Object's colour
 
 	glm::vec3 lightVec = lightPos1 - ray.hit;
@@ -147,7 +150,7 @@ glm::vec3 trace(Ray ray, int step)
 	shadowRay.closestPt(sceneObjects);
 
 	float lightDist = glm::length(lightVec);
-	float shadowFactor = 1.0f; // Default shadow factor (no shadow)
+	float shadowFactor = 1.0f; // Default shadow factor (no shadow
 
 	if ((shadowRay.index > -1) && (shadowRay.dist < lightDist))
 	{
@@ -156,17 +159,8 @@ glm::vec3 trace(Ray ray, int step)
 		shadowFactor = getShadowFactor(shadowObj);
 	}
 	color *= shadowFactor;
-	// Lighting calculations for the second light source
-	// glm::vec3 colorFromSecondLight = obj->lighting(lightPos2, -ray.dir, ray.hit);
-	// glm::vec3 lightVec2 = lightPos2 - ray.hit;
-	// Ray shadowRay2(ray.hit, lightVec2);
-	// shadowRay2.closestPt(sceneObjects);
-	// float lightDist2 = glm::length(lightVec2);
-	// if((shadowRay2.index > -1) && (shadowRay2.dist < lightDist2)){
-	// colorFromSecondLight = 0.2f * obj->getColor(); // Apply shadow color
-	//  }
 
-	// color += colorFromSecondLight;
+
 
 	if (obj->isReflective() && step < MAX_STEPS)
 	{
@@ -226,51 +220,45 @@ glm::vec3 trace(Ray ray, int step)
 		float refractionCoeff = obj->getRefractionCoeff();
 		color = (1.0f - refractionCoeff) * color + refractionCoeff * refractedColor;
 	}
-
-	return color;
+	if (FOGGY){
+		float z1 = ZMIN_BOX;
+		float z2 = ZMAX_BOX+50;
+		float lambda = ((ray.hit.z)-z1)/(z2-z1);
+		return (1-lambda)*color + lambda*glm::vec3(1,1,1);
+	} else {
+		return color;
+	}
+	
 }
 #include <vector>
 #include <glm/glm.hpp>
 
-bool similarColoursNearby(int i, int j, const std::vector<std::vector<glm::vec3>>& colors) {
-    // Define the threshold for color similarity
-    float threshold = 0.1f; // Adjust as needed
-    
-    // Get the color of the cell at position (i, j)
+#include <vector>
+#include <glm/glm.hpp>
+
+bool isEdge(int i, int j, const std::vector<std::vector<glm::vec3>>& colors, float threshold = 0.1f) {
     glm::vec3 targetColor = colors[i][j];
-    
-    // Define the neighboring offsets (assuming 8-connected neighbors)
     std::vector<std::pair<int, int>> offsets = {
         {-1, -1}, {-1, 0}, {-1, 1},
         {0, -1},           {0, 1},
         {1, -1},  {1, 0},  {1, 1}
     };
-    
-    // Iterate over the neighboring cells
+
     for (const auto& offset : offsets) {
         int ni = i + offset.first;
         int nj = j + offset.second;
-        
-        // Check if the neighboring cell is within bounds
         if (ni >= 0 && ni < colors.size() && nj >= 0 && nj < colors[0].size()) {
-            // Get the color of the neighboring cell
             glm::vec3 neighborColor = colors[ni][nj];
-            
-            // Calculate the color difference between the target color and the neighbor color
             float colorDifference = glm::length(targetColor - neighborColor);
-            
-            // Check if the color difference is within the threshold
             if (colorDifference > threshold) {
-                // Colors are not similar, return false
-                return false;
+                return true;
             }
         }
     }
-    
-    // All neighboring colors are similar, return true
-    return true;
-
+    return false;
 }
+
+
 //---The main display module -----------------------------------------------------------
 // In a ray tracing application, it just displays the ray traced image by drawing
 // each cell as a quad.
@@ -303,46 +291,37 @@ void display()
 		}
 	}
 
-	for (int i = 0; i < NUMDIV; i++) // Scan every cell of the image plane
-	{
-		xp = XMIN + i * cellX;
-		for (int j = 0; j < NUMDIV; j++)
-		{
-			yp = YMIN + j * cellY;
+	for (int i = 0; i < NUMDIV; i++) {
+        xp = XMIN + i * cellX;
+        for (int j = 0; j < NUMDIV; j++) {
+            yp = YMIN + j * cellY;
 
+            glm::vec3 cellColour = colors[i][j];
+            if (isEdge(i, j, colors) && ANTI_ALIAS) {
+                ; // Number of additional samples per dimension
+                glm::vec3 col_avg(0.0f);
+                for (int k = 0; k < SS_FACTOR; k++) {
+                    for (int l = 0; l < SS_FACTOR; l++) {
+                        glm::vec3 dir(xp + k * cellX / SS_FACTOR + 0.5 * cellX / SS_FACTOR, yp + l * cellY / SS_FACTOR + 0.5 * cellY / SS_FACTOR, EDIST);
+                        Ray ray = Ray(eye, dir);
+                        glm::vec3 col = trace(ray, 1);
+                        col_avg += col;
+                    }
+                }
+                col_avg /= (SS_FACTOR * SS_FACTOR);
+                cellColour = col_avg;
+            }
 
-			//if adjacent cells are not the same colour
-			glm::vec3 cellColour = colors[i][j];
-			if(!similarColoursNearby(i,j, colors)){
-				glm::vec3 col_avg(0.0f);
-				for (int k = 0; k < SS_FACTOR; k++)
-				{
-					for (int l = 0; l < SS_FACTOR; l++)
-					{
-						glm::vec3 dir(xp + (k + (float)rand() / RAND_MAX) * cellX,
-									yp + (l + (float)rand() / RAND_MAX) * cellY,
-									EDIST);
-						Ray ray = Ray(eye, dir);
-						glm::vec3 col = trace(ray, 1); // Trace the primary ray and get the colour value
-						col_avg += col;
-					}
-				}
+            glColor3f(cellColour.r, cellColour.g, cellColour.b);
+            glVertex2f(xp, yp);
+            glVertex2f(xp + cellX, yp);
+            glVertex2f(xp + cellX, yp + cellY);
+            glVertex2f(xp, yp + cellY);
+        }
+    }
 
-				col_avg /= (SS_FACTOR * SS_FACTOR);
-				cellColour = col_avg;
-			} 
-
-			
-			glColor3f(cellColour.r, cellColour.g, cellColour.b);
-			glVertex2f(xp, yp); // Draw each cell with its color value
-			glVertex2f(xp + cellX, yp);
-			glVertex2f(xp + cellX, yp + cellY);
-			glVertex2f(xp, yp + cellY);
-		}
-	}
-
-	glEnd();
-	glFlush();
+    glEnd();
+    glFlush();
 }
 
 //---This function initializes the scene -------------------------------------------
@@ -359,6 +338,7 @@ void initialize()
 	glClearColor(0, 0, 0, 1);
 
 	texture = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Butterfly.bmp");
+	earthTex = TextureBMP("/csse/users/jsu103/Documents/cosc363/363-assignment-2/363-assignment-2/Earth.bmp");
 
 	// Define the planes of the Cornell box
 	Plane *floorPlane = new Plane(
@@ -378,7 +358,6 @@ void initialize()
 		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX)	 // Point D
 	);
 	ceilingPlane->setColor(glm::vec3(1, 1, 1)); // Set colour
-	ceilingPlane->setReflectivity(true, 0.01);
 	sceneObjects.push_back(ceilingPlane);
 
 	Plane *rightWallPlane = new Plane(
@@ -387,7 +366,7 @@ void initialize()
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), // Point C
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX)	 // Point D
 	);
-	rightWallPlane->setColor(glm::vec3(0, 0.8, 0)); // Set colour
+	rightWallPlane->setColor(glm::vec3(0.2, 0.8, 0.2)); // Set colour
 	sceneObjects.push_back(rightWallPlane);
 
 	Plane *leftWallPlane = new Plane(
@@ -396,7 +375,8 @@ void initialize()
 		glm::vec3(XMIN_BOX, YMAX_BOX, ZMAX_BOX), // Point C
 		glm::vec3(XMIN_BOX, YMIN_BOX, ZMAX_BOX)	 // Point D
 	);
-	leftWallPlane->setColor(glm::vec3(0.8, 0, 0)); // Set colour
+	leftWallPlane->setColor(glm::vec3(0.7, 0.2, 0.2)); // Set colour
+	//leftWallPlane->setReflectivity(true, 0.7);
 	sceneObjects.push_back(leftWallPlane);
 
 	Plane *backWallPlane = new Plane(
@@ -405,7 +385,8 @@ void initialize()
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMAX_BOX), // Point C
 		glm::vec3(XMAX_BOX, YMIN_BOX, ZMAX_BOX)	 // Point D
 	);
-	backWallPlane->setColor(glm::vec3(1, 1, 1)); // Set colour
+	backWallPlane->setColor(glm::vec3(0.0, 0.0, 0.0)); // Set colour
+	backWallPlane->setReflectivity(true, 1);
 	sceneObjects.push_back(backWallPlane);
 
 	Plane *frontWallPlane = new Plane(
@@ -414,44 +395,44 @@ void initialize()
 		glm::vec3(XMAX_BOX, YMAX_BOX, ZMIN_BOX), // Point D
 		glm::vec3(XMIN_BOX, YMAX_BOX, ZMIN_BOX)	 // Point A
 	);
-	frontWallPlane->setColor(glm::vec3(1, 1, 1)); // Set colour
-	frontWallPlane->setReflectivity(false);
+	frontWallPlane->setColor(glm::vec3(0, 0, 1)); // Set colour
 	sceneObjects.push_back(frontWallPlane);
 
-	float CDR = 3.14159265 / 180.0; // Conversion from degrees to radians
 	glm::mat4 transform = glm::mat4(1.0);
-	transform = glm::translate(transform, glm::vec3(0.0, 0.05, 0.0));
-	transform = glm::rotate(transform, 15 * CDR, glm::vec3(0.0, 0.0, -1.0));
-	transform = glm::scale(transform, glm::vec3(0.5, 1, 0.5));
+	transform = glm::scale(transform, glm::vec3(1, 1.1, 1));
 
-	Sphere *smallSphere = new Sphere(glm::vec3(0.0, 0.0, 0.0), 10.0);
-	smallSphere->setColor(glm::vec3(1, 1, 1)); // Set colour to black
-	// smallSphere->setReflectivity(true, 0.8);
+	Sphere *smallSphere = new Sphere(glm::vec3(-25.0, -20.0, 20.0), 10.0);
+	smallSphere->setColor(glm::vec3(0, 0, 0)); // 
+	smallSphere->setReflectivity(true, .8);
 	smallSphere->setTransform(true, transform);
 
 	sceneObjects.push_back(smallSphere);
 
-	Sphere *smallSphere2 = new Sphere(glm::vec3(20.0, -40, -30.0), 10.0);
-	smallSphere2->setColor(glm::vec3(1, 1, 1)); // Set colour to black
-	smallSphere2->setTransparency(true, 0.7);
-	smallSphere2->setReflectivity(true, 0.1);
+	Sphere *smallSphere2 = new Sphere(glm::vec3(25.0, -35, -40.0), 8.0);
+	smallSphere2->setColor(glm::vec3(1, 1, 1)); // 
+	smallSphere2->setRefractivity(true, 1, 1.5);
 	sceneObjects.push_back(smallSphere2);
 
-	Sphere *smallSphere3 = new Sphere(glm::vec3(-20.0, -40, -30.0), 10.0);
-	smallSphere3->setColor(glm::vec3(1, 1, 1)); // Set colour to black
-	smallSphere3->setRefractivity(true, 0.8, 0.9);
+	Sphere *smallSphere3 = new Sphere(glm::vec3(-20.0, -35, -30.0), 8.0);
+	smallSphere3->setColor(glm::vec3(1, 1, 1)); // 
+	smallSphere3->setTransparency(true, 0.8);
+	smallSphere3->setReflectivity(true, 0.1);
 	sceneObjects.push_back(smallSphere3);
 
-	Cylinder *cyl = new Cylinder(glm::vec3(30.0, -50, 30.0), 10.0, 20);
+	Cylinder *cyl = new Cylinder(glm::vec3(15, -50, 25.0),2, 20);
 	cyl->setColor(glm::vec3(0, 0, 1)); // Set colour to blue
 	sceneObjects.push_back(cyl);
+	
+	Sphere *texSphere = new Sphere(glm::vec3(35.0, -20, 30.0), 12.0);
+	texSphere->setColor(glm::vec3(1, 1, 1));  
+	sceneObjects.push_back(texSphere);
 }
 
 int main(int argc, char *argv[])
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-	glutInitWindowSize(1080, 1080);
+	glutInitWindowSize(1000, 1000);
 	glutInitWindowPosition(20, 20);
 	glutCreateWindow("Raytracing");
 
