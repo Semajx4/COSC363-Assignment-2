@@ -68,7 +68,6 @@ glm::vec3 trace(Ray ray, int step)
 {
 	glm::vec3 backgroundCol(0);			// Background colour = (0,0,0)
 	glm::vec3 lightPos1(0., 45., -30.); // Light's position
-	// glm::vec3 lightPos2(-30., 100., -15.);					//Light's position
 	glm::vec3 color(0.5, 0.5, 0.2);
 	SceneObject *obj;
 
@@ -83,11 +82,11 @@ glm::vec3 trace(Ray ray, int step)
 		bool isX = glm::mod(ray.hit.x, squareSize) > squareSize * 0.5;
 		if (isX xor isZ)
 		{
-			color = glm::vec3(0.5, 0.5, 0.5);
+			color = glm::vec3(0.5, 0.5, 0.5); //Color grey for first set of squares
 		}
 		else
 		{
-			color = glm::vec3(1, 1, 1); // Color 2 for the other set of squares
+			color = glm::vec3(1, 1, 1); // Color white for the other set of squares
 		}
 		obj->setColor(color);
 	}
